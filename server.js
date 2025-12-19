@@ -1,7 +1,12 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { X402PaymentHandler } from './lib/x402-server/index.mjs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -12,7 +17,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from dist folder (for production)
-app.use(express.static('dist'));
+app.use(express.static(path.join(__dirname, 'dist')));
 
 // Initialize x402 handler
 const x402 = new X402PaymentHandler({
@@ -91,9 +96,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Serve frontend for all other routes (SPA support)
+// Serve frontend for all other routes (SPA support) - must be last!
 app.get('*', (req, res) => {
-  res.sendFile('index.html', { root: 'dist' });
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 app.listen(PORT, () => {
