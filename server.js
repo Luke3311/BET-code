@@ -28,6 +28,7 @@ const x402 = new X402PaymentHandler({
 
 console.log('✅ X402 Payment Handler initialized');
 console.log(`💰 Treasury: ${process.env.TREASURY_WALLET_ADDRESS || 'Gnu8xZ8yrhEurUiKokWbKJqe6Djdmo3hUHge8NLbtNeH'}`);
+console.log('🔧 Server version: 2024-12-19-v3');
 
 const paidSessions = new Set();
 
