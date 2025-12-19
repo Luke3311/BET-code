@@ -89,6 +89,25 @@ app.post('/api/payment', async (req, res) => {
     
     console.log('✅ Verification result:', JSON.stringify(verified, null, 2));
     
+    // Decode and log transaction details for successful payments too
+    if (verified.isValid && paymentHeader) {
+      try {
+        const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf8'));
+        if (paymentPayload.payload?.transaction) {
+          const txBuffer = Buffer.from(paymentPayload.payload.transaction, 'base64');
+          const { VersionedTransaction } = await import('@solana/web3.js');
+          const versionedTx = VersionedTransaction.deserialize(txBuffer);
+          console.log('✅ Transaction has', versionedTx.message.compiledInstructions.length, 'instructions');
+          versionedTx.message.compiledInstructions.forEach((ix, i) => {
+            const programId = versionedTx.message.staticAccountKeys[ix.programIdIndex];
+            console.log(`   Instruction ${i + 1}: ${programId.toBase58()}`);
+          });
+        }
+      } catch (err) {
+        console.log('Could not decode successful transaction:', err.message);
+      }
+    }
+    
     if (!verified.isValid) {
       console.error('❌ Payment verification failed:', verified.invalidReason);
       console.error('📦 Payment header (base64):', paymentHeader.substring(0, 100) + '...');
@@ -102,6 +121,20 @@ app.post('/api/payment', async (req, res) => {
         if (paymentPayload.payload?.transaction) {
           const txBuffer = Buffer.from(paymentPayload.payload.transaction, 'base64');
           console.error('📝 Transaction size:', txBuffer.length, 'bytes');
+          
+          // Try to decode the transaction to count instructions
+          try {
+            const { VersionedTransaction } = await import('@solana/web3.js');
+            const versionedTx = VersionedTransaction.deserialize(txBuffer);
+            console.error('🔢 Number of instructions:', versionedTx.message.compiledInstructions.length);
+            
+            versionedTx.message.compiledInstructions.forEach((ix, i) => {
+              const programId = versionedTx.message.staticAccountKeys[ix.programIdIndex];
+              console.error(`   Instruction ${i + 1}: ${programId.toBase58()}`);
+            });
+          } catch (txDecodeError) {
+            console.error('Could not decode transaction instructions:', txDecodeError.message);
+          }
         }
       } catch (decodeError) {
         console.error('Failed to decode payment header:', decodeError);

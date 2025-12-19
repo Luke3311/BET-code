@@ -10,6 +10,11 @@
   <body>
     <div id="root"></div>
     <script src="/x402-client.js?v=20241219v2"></script>
+    <script>
+      // Verify x402 client is loaded correctly
+      console.log('x402 client check:', typeof window.X402Solana !== 'undefined' ? '✅ Loaded' : '❌ Not loaded');
+      console.log('x402 version check - look for comment in source');
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
