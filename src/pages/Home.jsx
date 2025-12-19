@@ -106,18 +106,27 @@ export default function Home() {
         body: JSON.stringify({ amount: rawAmount })
       });
 
-      if (!response.ok) {
+      // x402Client.fetch handles the 402 flow automatically
+      // If we get here, payment was successful (or user cancelled)
+      if (response.ok) {
+        const result = await response.json();
+        toast.success('✅ Payment successful!');
+        navigate(createPageUrl('Dashboard'), { state: { stakeAmount: amount } });
+      } else if (response.status === 402) {
+        // This shouldn't happen as x402Client handles 402, but just in case
+        toast.error('Payment was not completed');
+      } else {
         throw new Error(`Payment failed: ${response.status}`);
       }
-
-      const result = await response.json();
-      
-      toast.success('✅ Payment successful!');
-      navigate(createPageUrl('Dashboard'), { state: { stakeAmount: amount } });
       
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error('Payment failed: ' + error.message);
+      // Check if user cancelled the payment
+      if (error.message?.includes('cancelled') || error.message?.includes('rejected')) {
+        toast.error('Payment was cancelled');
+      } else {
+        toast.error('Payment failed: ' + error.message);
+      }
     } finally {
       setIsProcessing(false);
     }
