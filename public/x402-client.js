@@ -20423,23 +20423,9 @@ Message: ${transactionMessage}.
     }
     const destAtaInfo = await connection.getAccountInfo(destinationAta, "confirmed");
     if (!destAtaInfo) {
-      const ASSOCIATED_TOKEN_PROGRAM_ID2 = new PublicKey(
-        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+      throw new Error(
+        `Destination wallet does not have an Associated Token Account for ${paymentRequirements.asset}. The treasury wallet must have an ATA for this token before receiving payments.`
       );
-      const createAtaInstruction = new TransactionInstruction({
-        keys: [
-          { pubkey: feePayerPubkey, isSigner: true, isWritable: true },
-          { pubkey: destinationAta, isSigner: false, isWritable: true },
-          { pubkey: destination, isSigner: false, isWritable: false },
-          { pubkey: mintPubkey, isSigner: false, isWritable: false },
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-          { pubkey: programId, isSigner: false, isWritable: false }
-        ],
-        programId: ASSOCIATED_TOKEN_PROGRAM_ID2,
-        data: Buffer.from([0])
-        // CreateATA discriminator
-      });
-      instructions.push(createAtaInstruction);
     }
     const amount = BigInt(paymentRequirements.maxAmountRequired);
     instructions.push(

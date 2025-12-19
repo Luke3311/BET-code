@@ -48,8 +48,11 @@ export default async function handler(req, res) {
     // Convert to token amount (6 decimals)
     const tokenAmount = Math.floor(parseFloat(amount) * 1_000_000).toString();
     
-    // Use the production URL - VERCEL_URL gives deployment-specific URLs which causes resource mismatch
-    const baseUrl = process.env.BASE_URL || 'https://bet-a.vercel.app';
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : (process.env.BASE_URL || 'http://localhost:3000');
+    
+    console.log('🌐 Base URL:', baseUrl);
     
     const paymentRequirements = await x402.createPaymentRequirements({
       price: {
@@ -73,6 +76,16 @@ export default async function handler(req, res) {
     }
 
     console.log('✅ Payment header found - verifying...');
+    
+    // Decode and log the payment payload for debugging
+    try {
+      const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf8'));
+      console.log('📦 Payment payload:', JSON.stringify(paymentPayload, null, 2));
+      console.log('📋 Payment requirements:', JSON.stringify(paymentRequirements, null, 2));
+    } catch (e) {
+      console.log('⚠️  Could not decode payment header:', e.message);
+    }
+    
     const verified = await x402.verifyPayment(paymentHeader, paymentRequirements);
     console.log('Verification result:', verified);
     
