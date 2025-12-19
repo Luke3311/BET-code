@@ -90,6 +90,10 @@ export default function Home() {
     setIsProcessing(true);
     
     try {
+      console.log('🔄 Starting payment flow...');
+      console.log('Wallet:', phantomWallet.publicKey.toString());
+      console.log('Amount:', rawAmount);
+      
       toast.info('🔄 Processing payment... Approve in Phantom');
 
       // For Vercel deployment, API routes are at /api/* on the same domain
@@ -97,6 +101,8 @@ export default function Home() {
       const paymentEndpoint = import.meta.env.DEV 
         ? 'http://localhost:3001/api/payment'
         : '/api/payment';
+      
+      console.log('Payment endpoint:', paymentEndpoint);
 
       const response = await x402Client.fetch(paymentEndpoint, {
         method: 'POST',
@@ -106,16 +112,23 @@ export default function Home() {
         body: JSON.stringify({ amount: rawAmount })
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       // x402Client.fetch handles the 402 flow automatically
       // If we get here, payment was successful (or user cancelled)
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ Payment successful!', result);
         toast.success('✅ Payment successful!');
         navigate(createPageUrl('Dashboard'), { state: { stakeAmount: amount } });
       } else if (response.status === 402) {
         // This shouldn't happen as x402Client handles 402, but just in case
+        console.log('❌ Got 402 response - payment flow did not complete');
         toast.error('Payment was not completed');
       } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Payment failed:', response.status, errorData);
         throw new Error(`Payment failed: ${response.status}`);
       }
       
