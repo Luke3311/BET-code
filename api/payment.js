@@ -48,8 +48,10 @@ export default async function handler(req, res) {
     // Convert to token amount (6 decimals)
     const tokenAmount = Math.floor(parseFloat(amount) * 1_000_000).toString();
     
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
+    // Use a consistent URL - VERCEL_URL gives deployment-specific URLs which can cause mismatches
+    // In production, use the actual domain; in dev, use localhost
+    const baseUrl = process.env.NODE_ENV === 'production' || process.env.VERCEL
+      ? 'https://bet-a.vercel.app'
       : (process.env.BASE_URL || 'http://localhost:3000');
     
     console.log('🌐 Base URL:', baseUrl);
@@ -82,12 +84,26 @@ export default async function handler(req, res) {
       const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf8'));
       console.log('📦 Payment payload:', JSON.stringify(paymentPayload, null, 2));
       console.log('📋 Payment requirements:', JSON.stringify(paymentRequirements, null, 2));
+      
+      // Log transaction details if present
+      if (paymentPayload.payload?.transaction) {
+        console.log('🔐 Transaction (base64 encoded) length:', paymentPayload.payload.transaction.length);
+        // Try to decode and inspect the transaction
+        try {
+          const txBuffer = Buffer.from(paymentPayload.payload.transaction, 'base64');
+          console.log('📝 Transaction buffer length:', txBuffer.length);
+          console.log('📝 Transaction first 20 bytes:', txBuffer.slice(0, 20).toString('hex'));
+        } catch (txErr) {
+          console.log('⚠️  Could not decode transaction buffer:', txErr.message);
+        }
+      }
     } catch (e) {
       console.log('⚠️  Could not decode payment header:', e.message);
     }
     
+    console.log('🚀 Sending verification request to facilitator...');
     const verified = await x402.verifyPayment(paymentHeader, paymentRequirements);
-    console.log('Verification result:', verified);
+    console.log('Verification result:', JSON.stringify(verified, null, 2));
     
     if (!verified.isValid) {
       console.log('❌ Payment verification failed:', verified.invalidReason);
