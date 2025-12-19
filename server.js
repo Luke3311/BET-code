@@ -17,7 +17,9 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files from dist folder (for production)
-app.use(express.static(path.join(__dirname, 'dist')));
+const distPath = path.join(__dirname, 'dist');
+console.log('📁 Serving static files from:', distPath);
+app.use(express.static(distPath));
 
 // Initialize x402 handler
 const x402 = new X402PaymentHandler({
@@ -28,7 +30,8 @@ const x402 = new X402PaymentHandler({
 
 console.log('✅ X402 Payment Handler initialized');
 console.log(`💰 Treasury: ${process.env.TREASURY_WALLET_ADDRESS || 'Gnu8xZ8yrhEurUiKokWbKJqe6Djdmo3hUHge8NLbtNeH'}`);
-console.log('🔧 Server version: 2024-12-19-v3');
+console.log('🔧 Server version: 2024-12-19-v4');
+console.log('🌍 BASE_URL env var:', process.env.BASE_URL || 'NOT SET');
 
 const paidSessions = new Set();
 
@@ -104,6 +107,41 @@ app.post('/api/payment', async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Debug endpoint to check if x402-client.js exists
+app.get('/api/debug', async (req, res) => {
+  const fs = await import('fs/promises');
+  const clientPath = path.join(__dirname, 'dist', 'x402-client.js');
+  const indexPath = path.join(__dirname, 'dist', 'index.html');
+  
+  try {
+    const [clientExists, indexExists] = await Promise.all([
+      fs.access(clientPath).then(() => true).catch(() => false),
+      fs.access(indexPath).then(() => true).catch(() => false)
+    ]);
+    
+    let clientSize = 0;
+    if (clientExists) {
+      const stats = await fs.stat(clientPath);
+      clientSize = stats.size;
+    }
+    
+    res.json({
+      distPath: distPath,
+      files: {
+        'x402-client.js': { exists: clientExists, size: clientSize },
+        'index.html': { exists: indexExists }
+      },
+      env: {
+        BASE_URL: process.env.BASE_URL || 'NOT SET',
+        NODE_ENV: process.env.NODE_ENV,
+        PORT: PORT
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Serve frontend for all other routes (SPA support) - must be last!
