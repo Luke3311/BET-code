@@ -46,12 +46,21 @@ app.post('/api/payment', async (req, res) => {
     const tokenAmount = Math.floor(parseFloat(amount) * 1_000_000).toString();
     
     // Auto-detect base URL: use BASE_URL env var, or construct from request host
-    const baseUrl = process.env.BASE_URL || 
-                    (req.get('host')?.includes('localhost') 
-                      ? `http://localhost:${PORT}` 
-                      : `https://${req.get('host')}`);
+    // IMPORTANT: Set BASE_URL in production (e.g., https://your-app.onrender.com)
+    let baseUrl;
+    if (process.env.BASE_URL) {
+      baseUrl = process.env.BASE_URL;
+    } else if (req.get('host')?.includes('localhost')) {
+      baseUrl = `http://localhost:${PORT}`;
+    } else {
+      // Production fallback - construct from host
+      const protocol = req.get('x-forwarded-proto') || 'https';
+      baseUrl = `${protocol}://${req.get('host')}`;
+    }
     
     console.log('🌐 Base URL:', baseUrl);
+    console.log('📍 Host:', req.get('host'));
+    console.log('🔒 Protocol:', req.get('x-forwarded-proto') || 'https');
     
     const paymentRequirements = await x402.createPaymentRequirements({
       price: {

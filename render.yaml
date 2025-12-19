@@ -11,7 +11,11 @@ services:
         value: production
       - key: PORT
         value: 3001
+      # CRITICAL: Set this in Render dashboard to your actual deployment URL
+      # Example: https://bet-app-abc123.onrender.com
+      # This ensures consistent payment resource URLs for the x402 facilitator
       - key: BASE_URL
         sync: false
       - key: TREASURY_WALLET_ADDRESS
         value: Gnu8xZ8yrhEurUiKokWbKJqe6Djdmo3hUHge8NLbtNeH
+
