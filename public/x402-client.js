@@ -1,5 +1,7 @@
 var X402Solana = (function (exports) {
   'use strict';
+  
+  // Version: 2024-12-19-v2 - No CreateATA instruction
 
   var __create = Object.create;
   var __defProp = Object.defineProperty;
