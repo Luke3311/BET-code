@@ -20441,7 +20441,7 @@ Message: ${transactionMessage}.
       console.log("Destination ATA does not exist, adding create instruction");
       instructions.push(
         createAssociatedTokenAccountInstruction(
-          feePayerPubkey,
+          userPubkey,
           destinationAta,
           destination,
           mintPubkey
