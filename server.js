@@ -11,6 +11,9 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Serve static files from dist folder (for production)
+app.use(express.static('dist'));
+
 // Initialize x402 handler
 const x402 = new X402PaymentHandler({
   network: 'solana',
@@ -79,6 +82,11 @@ app.post('/api/payment', async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Serve frontend for all other routes (SPA support)
+app.get('*', (req, res) => {
+  res.sendFile('index.html', { root: 'dist' });
 });
 
 app.listen(PORT, () => {

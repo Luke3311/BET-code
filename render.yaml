@@ -1,0 +1,17 @@
+services:
+  # Web service (serves frontend + API)
+  - type: web
+    name: bet-app
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: BASE_URL
+        sync: false
+      - key: TREASURY_WALLET_ADDRESS
+        value: Gnu8xZ8yrhEurUiKokWbKJqe6Djdmo3hUHge8NLbtNeH
