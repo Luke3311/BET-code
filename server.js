@@ -92,6 +92,21 @@ app.post('/api/payment', async (req, res) => {
     if (!verified.isValid) {
       console.error('❌ Payment verification failed:', verified.invalidReason);
       console.error('📦 Payment header (base64):', paymentHeader.substring(0, 100) + '...');
+      
+      // Decode the payment payload to see what's actually in the transaction
+      try {
+        const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf8'));
+        console.error('🔍 Decoded payment payload:', JSON.stringify(paymentPayload, null, 2));
+        
+        // If there's a transaction in the payload, try to decode it
+        if (paymentPayload.payload?.transaction) {
+          const txBuffer = Buffer.from(paymentPayload.payload.transaction, 'base64');
+          console.error('📝 Transaction size:', txBuffer.length, 'bytes');
+        }
+      } catch (decodeError) {
+        console.error('Failed to decode payment header:', decodeError);
+      }
+      
       console.error('📋 Payment requirements:', JSON.stringify(paymentRequirements, null, 2));
       return res.status(402).json({ error: 'Invalid payment', reason: verified.invalidReason });
     }
