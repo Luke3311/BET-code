@@ -31,9 +31,12 @@ export default function Home() {
       const resp = await provider.connect();
       
       const walletObj = {
-        address: resp.publicKey.toString(),
+        publicKey: resp.publicKey,
         signTransaction: async (transaction) => {
           return await provider.signTransaction(transaction);
+        },
+        signAndSendTransaction: async (transaction) => {
+          return await provider.signAndSendTransaction(transaction);
         }
       };
 
@@ -41,7 +44,7 @@ export default function Home() {
 
       const client = window.X402Solana.createX402Client({
         wallet: walletObj,
-        network: 'solana',
+        network: 'mainnet-beta',
         rpcUrl: 'https://mainnet.helius-rpc.com/?api-key=ca236ed7-a31f-41b6-84b8-70bd9872de12',
         maxPaymentAmount: BigInt(1_000_000_000_000_000),
       });
