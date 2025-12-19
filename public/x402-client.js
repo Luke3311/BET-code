@@ -20423,8 +20423,14 @@ Message: ${transactionMessage}.
     }
     const destAtaInfo = await connection.getAccountInfo(destinationAta, "confirmed");
     if (!destAtaInfo) {
-      throw new Error(
-        `Destination wallet does not have an Associated Token Account for ${paymentRequirements.asset}. The treasury wallet must have an ATA for this token before receiving payments.`
+      console.log("Destination ATA does not exist, adding create instruction");
+      instructions.push(
+        createAssociatedTokenAccountInstruction(
+          feePayer,
+          destinationAta,
+          destinationPubkey,
+          mintPubkey
+        )
       );
     }
     const amount = BigInt(paymentRequirements.maxAmountRequired);
