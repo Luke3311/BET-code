@@ -1,4 +1,4 @@
-import { X402PaymentHandler } from '../lib/x402-server/index.mjs';
+import { X402PaymentHandler } from '../lib/x402-server/index.js';
 
 const x402 = new X402PaymentHandler({
   network: 'solana',
