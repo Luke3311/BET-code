@@ -87,7 +87,12 @@ app.post('/api/payment', async (req, res) => {
 
     const verified = await x402.verifyPayment(paymentHeader, paymentRequirements);
     
+    console.log('✅ Verification result:', JSON.stringify(verified, null, 2));
+    
     if (!verified.isValid) {
+      console.error('❌ Payment verification failed:', verified.invalidReason);
+      console.error('📦 Payment header (base64):', paymentHeader.substring(0, 100) + '...');
+      console.error('📋 Payment requirements:', JSON.stringify(paymentRequirements, null, 2));
       return res.status(402).json({ error: 'Invalid payment', reason: verified.invalidReason });
     }
 
