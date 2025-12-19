@@ -98,8 +98,14 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve frontend for all other routes (SPA support) - must be last!
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// Use a middleware function instead of app.get('*') for Express 5 compatibility
+app.use((req, res, next) => {
+  // Only serve index.html for non-API routes that accept HTML
+  if (!req.path.startsWith('/api') && req.accepts('html')) {
+    res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  } else {
+    next();
+  }
 });
 
 app.listen(PORT, () => {
