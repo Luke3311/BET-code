@@ -20365,6 +20365,21 @@ Message: ${transactionMessage}.
     const [address] = await PublicKey.findProgramAddress([owner.toBuffer(), programId.toBuffer(), mint.toBuffer()], associatedTokenProgramId);
     return address;
   }
+  function createAssociatedTokenAccountInstruction(payer, associatedToken, owner, mint, programId = TOKEN_PROGRAM_ID, associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID) {
+    const keys = [
+      { pubkey: payer, isSigner: true, isWritable: true },
+      { pubkey: associatedToken, isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: programId, isSigner: false, isWritable: false }
+    ];
+    return new TransactionInstruction({
+      keys,
+      programId: associatedTokenProgramId,
+      data: Buffer.alloc(0)
+    });
+  }
 
   // src/client/transaction-builder.ts
   async function createSolanaPaymentHeader(wallet, x402Version, paymentRequirements, rpcUrl) {
