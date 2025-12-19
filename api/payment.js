@@ -48,9 +48,8 @@ export default async function handler(req, res) {
     // Convert to token amount (6 decimals)
     const tokenAmount = Math.floor(parseFloat(amount) * 1_000_000).toString();
     
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : (process.env.BASE_URL || 'http://localhost:3000');
+    // Use the production URL - VERCEL_URL gives deployment-specific URLs which causes resource mismatch
+    const baseUrl = process.env.BASE_URL || 'https://bet-a.vercel.app';
     
     const paymentRequirements = await x402.createPaymentRequirements({
       price: {
