@@ -39,7 +39,14 @@ app.post('/api/payment', async (req, res) => {
     // Convert to token amount (6 decimals)
     const tokenAmount = Math.floor(parseFloat(amount) * 1_000_000).toString();
     
-    const baseUrl = process.env.BASE_URL || `http://localhost:${PORT}`;
+    // Auto-detect base URL: use BASE_URL env var, or construct from request host
+    const baseUrl = process.env.BASE_URL || 
+                    (req.get('host')?.includes('localhost') 
+                      ? `http://localhost:${PORT}` 
+                      : `https://${req.get('host')}`);
+    
+    console.log('🌐 Base URL:', baseUrl);
+    
     const paymentRequirements = await x402.createPaymentRequirements({
       price: {
         amount: tokenAmount,
