@@ -18,4 +18,18 @@ services:
         sync: false
       - key: TREASURY_WALLET_ADDRESS
         value: Gnu8xZ8yrhEurUiKokWbKJqe6Djdmo3hUHge8NLbtNeH
+      # Base44 Configuration
+      - key: VITE_BASE44_APP_ID
+        value: 694161820fcd03f218c614b5
+      - key: VITE_BASE44_APP_SECRET
+        value: 334c9d535c574150891d8ed4ba5e3ccc
+      - key: VITE_BASE44_BACKEND_URL
+        value: https://app.base44.com
+      - key: VITE_BASE44_FUNCTIONS_VERSION
+        value: 1
+      # Email Configuration (Resend)
+      - key: RESEND_API_KEY
+        value: re_aavhGFbG_J9qL8mgDHGqhBQMwsv9aRNmy
+      - key: RESEND_FROM_EMAIL
+        value: onboarding@resend.dev
 

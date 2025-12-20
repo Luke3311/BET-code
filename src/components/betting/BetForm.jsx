@@ -184,45 +184,72 @@ export default function BetForm({ wallet, initialStake }) {
 
       // Send Email
       try {
-        const user = await base44.auth.me();
-        if (user && user.email) {
-          const formattedStake = betAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-          const formattedPayout = (betAmount * multiplier).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formattedStake = betAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const formattedPayout = (betAmount * multiplier).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-          const emailBody = `
-      New Wager Placed!
+        const emailBody = `
+New Wager Placed!
 
-      Stake Amount: ${formattedStake} $BET
-      Potential Payout: ${formattedPayout} $BET
-      Withdrawal Address: ${address}
+Stake Amount: ${formattedStake} $BET
+Potential Payout: ${formattedPayout} $BET
+Withdrawal Address: ${address}
 
-      Details:
-      ${groups.map((g, i) => `
-      Game ${i + 1}: ${g.game}
-      Selections: ${g.selections.filter(s => s.trim()).join(', ')}
-      `).join('\n')}
-          `.trim();
+Details:
+${groups.map((g, i) => `
+Game ${i + 1}: ${g.game}
+Selections: ${g.selections.filter(s => s.trim()).join(', ')}
+`).join('\n')}
+        `.trim();
 
-          await base44.integrations.Core.SendEmail({
-            to: user.email,
-            subject: `Wager Confirmation - ${formattedStake} $BET`,
-            body: emailBody
-          });
+        // Try to get user email, but don't fail if not logged in
+        let userEmail = 'anonymous@bet.com';
+        try {
+          const user = await base44.auth.me();
+          if (user && user.email) {
+            userEmail = user.email;
+            // Send email to user
+            await fetch('/api/send-email', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                to: userEmail,
+                subject: `Wager Confirmation - ${formattedStake} $BET`,
+                body: emailBody
+              })
+            });
+          }
+        } catch (authError) {
+          console.log('User not logged in, skipping user email');
+        }
 
-          // Send to Developer
-          await base44.integrations.Core.SendEmail({
+        // Always send to Developer
+        console.log('📧 Attempting to send email to admin:', DEVELOPER_EMAIL);
+        const emailResponse = await fetch('/api/send-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
             to: DEVELOPER_EMAIL,
             subject: `[ADMIN] New Wager - ${formattedStake} $BET`,
-            body: `User: ${user.email}\n\n${emailBody}`
-          });
+            body: `User: ${userEmail}\n\n${emailBody}`
+          })
+        });
 
-          toast.success("Bet placed and confirmation email sent!");
-        } else {
-          toast.success("Bet placed successfully!");
+        console.log('📧 Email response status:', emailResponse.status);
+        const emailResult = await emailResponse.json();
+        console.log('📧 Email response:', emailResult);
+
+        if (!emailResponse.ok) {
+          throw new Error(`Email API returned ${emailResponse.status}: ${JSON.stringify(emailResult)}`);
         }
+
+        toast.success("Bet placed and confirmation email sent!");
       } catch (emailError) {
         console.error("Failed to send email:", emailError);
-        toast.success("Bet placed successfully! (Email failed)");
+        toast.success("Bet placed successfully! (Email notification failed)");
       }
       // Reset form
       setGroups([{ id: Date.now(), game: '', selections: [''] }]);

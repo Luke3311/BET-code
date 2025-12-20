@@ -185,6 +185,50 @@ app.post('/api/payment', async (req, res) => {
   }
 });
 
+// Email API endpoint
+app.post('/api/send-email', async (req, res) => {
+  console.log('📧 Email API called');
+  console.log('📧 Request body:', JSON.stringify(req.body, null, 2));
+  
+  try {
+    const { Resend } = await import('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+
+    console.log('📧 Resend API Key:', process.env.RESEND_API_KEY ? 'Set ✅' : 'Missing ❌');
+    console.log('📧 From Email:', process.env.RESEND_FROM_EMAIL);
+
+    const { to, subject, body } = req.body;
+
+    // Validate input
+    if (!to || !subject || !body) {
+      console.error('❌ Missing required fields:', { to: !!to, subject: !!subject, body: !!body });
+      return res.status(400).json({ error: 'Missing required fields: to, subject, body' });
+    }
+
+    console.log('📧 Sending email to:', to);
+    console.log('📧 Subject:', subject);
+
+    // Send email using Resend
+    const data = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
+      to: to,
+      subject: subject,
+      text: body,
+    });
+
+    console.log('✅ Email sent successfully:', JSON.stringify(data, null, 2));
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    console.error('❌ Error sending email:', error);
+    console.error('❌ Error details:', error.message);
+    console.error('❌ Error stack:', error.stack);
+    return res.status(500).json({ 
+      error: 'Failed to send email', 
+      details: error.message 
+    });
+  }
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
