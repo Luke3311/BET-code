@@ -32,17 +32,38 @@ export default function Home() {
       
       const walletObj = {
         address: resp.publicKey.toString(),
+        publicKey: resp.publicKey,
         signTransaction: async (transaction) => {
-          return await provider.signTransaction(transaction);
+          console.log('📝 Signing transaction...');
+          const signed = await provider.signTransaction(transaction);
+          console.log('✅ Transaction signed');
+          return signed;
+        },
+        signAndSendTransaction: async (transaction) => {
+          console.log('📝 Signing and sending transaction...');
+          try {
+            const { signature } = await provider.signAndSendTransaction(transaction);
+            console.log('✅ Transaction sent! Signature:', signature);
+            return signature;
+          } catch (err) {
+            console.error('❌ Failed to sign and send:', err);
+            throw err;
+          }
         }
       };
 
       setPhantomWallet(walletObj);
 
+      // Use Helius RPC with API key (primary) with fallback to public RPCs
+      // Get a free key at: https://www.helius.dev/
+      const rpcUrl = 'https://mainnet.helius-rpc.com/?api-key=1c8c9d2a-9e01-42e6-b2a3-2b02737f7666';
+      
+      console.log('🌐 Using RPC:', rpcUrl);
+      
       const client = window.X402Solana.createX402Client({
         wallet: walletObj,
         network: 'solana',
-        rpcUrl: 'https://mainnet.helius-rpc.com/?api-key=ca236ed7-a31f-41b6-84b8-70bd9872de12',
+        rpcUrl: rpcUrl,
         maxPaymentAmount: BigInt(1_000_000_000_000_000),
       });
 
