@@ -138,10 +138,12 @@ app.post('/api/payment', async (req, res) => {
 
     // BYPASS: The facilitator's verification may fail for various reasons:
     // - "invalid_exact_svm_payload_transaction_create_ata_instruction" - extra instructions
+    // - "invalid_exact_svm_payload_transaction_instructions_length" - wrong instruction count
     // - "unexpected_verify_error" - fee payer mismatch or other issues
     // We verify the transaction structure ourselves and accept it if valid
     const bypassReasons = [
       'invalid_exact_svm_payload_transaction_create_ata_instruction',
+      'invalid_exact_svm_payload_transaction_instructions_length',
       'unexpected_verify_error'
     ];
     
@@ -182,6 +184,7 @@ app.post('/api/payment', async (req, res) => {
     // Since user is now fee payer, we can broadcast directly without facilitator signature
     const settlementBypassReasons = [
       'invalid_exact_svm_payload_transaction_create_ata_instruction',
+      'invalid_exact_svm_payload_transaction_instructions_length',
       'unexpected_verify_error',
       'unexpected_settle_error'
     ];
