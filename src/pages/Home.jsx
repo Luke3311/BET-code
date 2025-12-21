@@ -111,6 +111,7 @@ export default function Home() {
     setIsProcessing(true);
     
     try {
+      console.log('💰 Starting payment flow for amount:', rawAmount);
       toast.info('🔄 Processing payment... Approve in Phantom');
 
       // For Vercel deployment, API routes are at /api/* on the same domain
@@ -118,6 +119,8 @@ export default function Home() {
       const paymentEndpoint = import.meta.env.DEV 
         ? 'http://localhost:3001/api/payment'
         : '/api/payment';
+
+      console.log('📡 Calling payment endpoint:', paymentEndpoint);
 
       const response = await x402Client.fetch(paymentEndpoint, {
         method: 'POST',
@@ -127,14 +130,28 @@ export default function Home() {
         body: JSON.stringify({ amount: rawAmount })
       });
 
+      console.log('📬 Payment response status:', response.status);
+      console.log('📬 Payment response headers:', Object.fromEntries([...response.headers.entries()]));
+
       // x402Client.fetch handles the 402 flow automatically
       // If we get here, payment was successful (or user cancelled)
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ Payment result:', result);
+        
+        // Check for transaction signature in response
+        if (result.transaction || result.signature) {
+          console.log('🔗 Transaction signature:', result.transaction || result.signature);
+          console.log('🔗 View on Solscan: https://solscan.io/tx/' + (result.transaction || result.signature));
+        } else {
+          console.warn('⚠️ No transaction signature in response! This means the tx was not broadcast.');
+        }
+        
         toast.success('✅ Payment successful!');
         navigate(createPageUrl('Dashboard'), { state: { stakeAmount: amount } });
       } else if (response.status === 402) {
         // This shouldn't happen as x402Client handles 402, but just in case
+        console.error('❌ 402 status returned after x402Client processing');
         toast.error('Payment was not completed');
       } else {
         throw new Error(`Payment failed: ${response.status}`);

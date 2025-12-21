@@ -173,11 +173,34 @@ app.post('/api/payment', async (req, res) => {
     const sessionToken = `paid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     paidSessions.add(sessionToken);
 
+    console.log('🚀 Calling settlePayment on facilitator...');
+    console.log('📦 Payment header length:', paymentHeader.length);
+    console.log('📋 Payment requirements:', JSON.stringify(paymentRequirements, null, 2));
+    
     const settleResult = await x402.settlePayment(paymentHeader, paymentRequirements);
     console.log('🏁 Settlement result:', JSON.stringify(settleResult, null, 2));
+    
+    // Critical: Check if the settlement actually included a transaction signature
+    if (settleResult.success && settleResult.transaction) {
+      console.log('✅ Transaction successfully broadcast to blockchain!');
+      console.log('🔗 Transaction signature:', settleResult.transaction);
+      console.log('🔗 View on Solscan: https://solscan.io/tx/' + settleResult.transaction);
+    } else if (settleResult.success && !settleResult.transaction) {
+      console.error('⚠️ WARNING: Settlement marked as success but NO TRANSACTION SIGNATURE returned!');
+      console.error('⚠️ This means the facilitator accepted payment but did not broadcast to blockchain.');
+      console.error('⚠️ This is the root cause of the "transaction not found" issue.');
+    } else {
+      console.error('❌ Settlement failed:', settleResult.errorReason || 'Unknown reason');
+    }
 
     res.set('X-PAYMENT-RESPONSE', sessionToken);
-    res.json({ success: true, message: 'Payment successful', sessionToken });
+    res.json({ 
+      success: true, 
+      message: 'Payment successful', 
+      sessionToken,
+      transaction: settleResult.transaction,  // Include tx signature in response
+      signature: settleResult.transaction      // Also include as "signature" field
+    });
     
   } catch (error) {
     console.error('Payment error:', error);
