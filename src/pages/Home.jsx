@@ -56,7 +56,7 @@ export default function Home() {
 
       // Use Helius RPC with API key (primary) with fallback to public RPCs
       // Get a free key at: https://www.helius.dev/
-      const rpcUrl = 'https://mainnet.helius-rpc.com/?api-key=1c8c9d2a-9e01-42e6-b2a3-2b02737f7666';
+      const rpcUrl = 'https://mainnet.helius-rpc.com/?api-key=cf804c90-f640-4ec7-af71-700013971bd3';
       
       console.log('🌐 Using RPC:', rpcUrl);
       
