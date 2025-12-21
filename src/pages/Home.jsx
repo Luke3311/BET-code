@@ -150,6 +150,29 @@ export default function Home() {
           console.log('✅ Payment verified (facilitator bypass - no on-chain tx)');
         }
         
+        // Update base44 wallet balance with the deposited amount
+        try {
+          const wallets = await base44.entities.Wallet.list();
+          if (wallets.length > 0) {
+            // Add to existing balance
+            const currentBalance = wallets[0].balance || 0;
+            await base44.entities.Wallet.update(wallets[0].id, {
+              balance: currentBalance + rawAmount
+            });
+            console.log('💰 Wallet balance updated:', currentBalance + rawAmount);
+          } else {
+            // Create new wallet with the deposit amount
+            await base44.entities.Wallet.create({
+              balance: rawAmount,
+              wallet_address: phantomWallet.address
+            });
+            console.log('💰 New wallet created with balance:', rawAmount);
+          }
+        } catch (walletError) {
+          console.error('Failed to update wallet balance:', walletError);
+          // Continue anyway - payment was successful
+        }
+        
         toast.success('✅ Payment successful!');
         navigate(createPageUrl('Dashboard'), { state: { stakeAmount: amount } });
       } else if (response.status === 402) {
