@@ -108,7 +108,27 @@ app.post('/api/payment', async (req, res) => {
           console.log('📝 Transaction has', versionedTx.message.compiledInstructions.length, 'instructions:');
           versionedTx.message.compiledInstructions.forEach((ix, i) => {
             const programId = versionedTx.message.staticAccountKeys[ix.programIdIndex];
-            console.log(`   ${i + 1}. ${programId.toBase58()}`);
+            const programIdStr = programId.toBase58();
+            console.log(`   ${i + 1}. ${programIdStr}`);
+            
+            // Known program IDs
+            const knownPrograms = {
+              'ComputeBudget111111111111111111111111111111': 'ComputeBudget',
+              'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA': 'Token Program',
+              'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb': 'Token-2022',
+              'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL': 'ATA Program',
+              'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr': 'Memo v1',
+              'Memo1UhkJRfHyvLMcVucJwxXeuD728EqVDDwQDxFMNo': 'Memo v2',
+              '11111111111111111111111111111111': 'System Program'
+            };
+            console.log(`      → ${knownPrograms[programIdStr] || 'UNKNOWN PROGRAM'}`);
+            console.log(`      → Data length: ${ix.data.length} bytes`);
+          });
+          
+          // Log all account keys in the transaction
+          console.log('📋 All account keys in transaction:');
+          versionedTx.message.staticAccountKeys.forEach((key, i) => {
+            console.log(`   ${i}. ${key.toBase58()}`);
           });
         }
       } catch (err) {
