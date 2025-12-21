@@ -20386,16 +20386,18 @@ Message: ${transactionMessage}.
   // src/client/transaction-builder.ts
   async function createSolanaPaymentHeader(wallet, x402Version, paymentRequirements, rpcUrl) {
     const connection = new Connection(rpcUrl, "confirmed");
-    const feePayer = paymentRequirements?.extra?.feePayer;
-    if (typeof feePayer !== "string" || !feePayer) {
-      throw new Error("Missing facilitator feePayer in payment requirements (extra.feePayer).");
-    }
-    const feePayerPubkey = new PublicKey(feePayer);
+    
+    // MODIFIED: Use user as fee payer instead of facilitator
+    // This allows direct broadcast without facilitator signature
     const walletAddress = wallet?.publicKey?.toString() || wallet?.address;
     if (!walletAddress) {
       throw new Error("Missing connected Solana wallet address or publicKey");
     }
     const userPubkey = new PublicKey(walletAddress);
+    const feePayerPubkey = userPubkey; // User pays transaction fees
+    
+    console.log('💰 Using user as fee payer:', userPubkey.toBase58());
+    
     if (!paymentRequirements?.payTo) {
       throw new Error("Missing payTo in payment requirements");
     }

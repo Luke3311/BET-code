@@ -35,8 +35,20 @@ export default function Home() {
         publicKey: resp.publicKey,
         signTransaction: async (transaction) => {
           console.log('📝 Signing transaction...');
+          console.log('📊 BEFORE signing - Instructions:', transaction.message.compiledInstructions.length);
+          
           const signed = await provider.signTransaction(transaction);
+          
           console.log('✅ Transaction signed');
+          console.log('📊 AFTER signing - Instructions:', signed.message.compiledInstructions.length);
+          
+          // Check if Phantom added instructions
+          if (signed.message.compiledInstructions.length !== transaction.message.compiledInstructions.length) {
+            console.warn('⚠️ Phantom modified the transaction! Added', 
+              signed.message.compiledInstructions.length - transaction.message.compiledInstructions.length, 
+              'instruction(s)');
+          }
+          
           return signed;
         },
         signAndSendTransaction: async (transaction) => {
