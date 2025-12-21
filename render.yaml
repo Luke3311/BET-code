@@ -18,6 +18,9 @@ services:
         sync: false
       - key: TREASURY_WALLET_ADDRESS
         value: Gnu8xZ8yrhEurUiKokWbKJqe6Djdmo3hUHge8NLbtNeH
+      # Helius RPC Configuration (for reliable Solana transaction broadcasting)
+      - key: HELIUS_API_KEY
+        value: cf804c90-f640-4ec7-af71-700013971bd3
       # Base44 Configuration
       - key: VITE_BASE44_APP_ID
         value: 694161820fcd03f218c614b5

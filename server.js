@@ -22,15 +22,20 @@ console.log('📁 Serving static files from:', distPath);
 app.use(express.static(distPath));
 
 // Initialize x402 handler
+const HELIUS_API_KEY = process.env.HELIUS_API_KEY || 'cf804c90-f640-4ec7-af71-700013971bd3';
+const HELIUS_RPC_URL = `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+
 const x402 = new X402PaymentHandler({
   network: 'solana',
   treasuryAddress: process.env.TREASURY_WALLET_ADDRESS || 'Gnu8xZ8yrhEurUiKokWbKJqe6Djdmo3hUHge8NLbtNeH',
   facilitatorUrl: 'https://facilitator.payai.network',
+  rpcUrl: HELIUS_RPC_URL,  // ← Add Helius RPC for reliable transaction broadcasting
 });
 
 console.log('✅ X402 Payment Handler initialized');
 console.log(`💰 Treasury: ${process.env.TREASURY_WALLET_ADDRESS || 'Gnu8xZ8yrhEurUiKokWbKJqe6Djdmo3hUHge8NLbtNeH'}`);
-console.log('🔧 Server version: 2024-12-19-v4');
+console.log('🌐 RPC URL:', HELIUS_RPC_URL.replace(/api-key=[^&]+/, 'api-key=***'));
+console.log('🔧 Server version: 2024-12-19-v5');
 console.log('🌍 BASE_URL env var:', process.env.BASE_URL || 'NOT SET');
 
 const paidSessions = new Set();
@@ -48,22 +53,26 @@ app.post('/api/payment', async (req, res) => {
     // Convert to token amount (6 decimals)
     const tokenAmount = Math.floor(parseFloat(amount) * 1_000_000).toString();
     
-    // Auto-detect base URL: use BASE_URL env var, or construct from request host
-    // IMPORTANT: Set BASE_URL in production (e.g., https://your-app.onrender.com)
+    // Auto-detect base URL: prefer BASE_URL env var, but fallback to request host
+    // IMPORTANT: If you change your domain, either update BASE_URL env or delete it to auto-detect
     let baseUrl;
-    if (process.env.BASE_URL) {
+    if (process.env.BASE_URL && !req.get('host')?.includes('localhost')) {
+      // Use BASE_URL only if it's set AND we're not on localhost
       baseUrl = process.env.BASE_URL;
+      console.log('🌐 Using BASE_URL from env:', baseUrl);
     } else if (req.get('host')?.includes('localhost')) {
       baseUrl = `http://localhost:${PORT}`;
+      console.log('🌐 Using localhost:', baseUrl);
     } else {
-      // Production fallback - construct from host
+      // Auto-detect from request headers (works even if domain changes)
       const protocol = req.get('x-forwarded-proto') || 'https';
       baseUrl = `${protocol}://${req.get('host')}`;
+      console.log('🌐 Auto-detected from request:', baseUrl);
     }
     
-    console.log('🌐 Base URL:', baseUrl);
-    console.log('📍 Host:', req.get('host'));
-    console.log('🔒 Protocol:', req.get('x-forwarded-proto') || 'https');
+    console.log('📍 Request Host:', req.get('host'));
+    console.log('🔒 Request Protocol:', req.get('x-forwarded-proto') || 'https');
+    console.log('✅ Final Base URL for payment resource:', baseUrl);
     
     const paymentRequirements = await x402.createPaymentRequirements({
       price: {
