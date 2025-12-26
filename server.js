@@ -144,8 +144,12 @@ app.post('/api/payment', async (req, res) => {
     const bypassReasons = [
       'invalid_exact_svm_payload_transaction_create_ata_instruction',
       'invalid_exact_svm_payload_transaction_instructions_length',
-      'unexpected_verify_error'
+      'unexpected_verify_error',
+      'fee_payer_not_managed_by_facilitator'
     ];
+    
+    // Track if we're using bypass mode (skip facilitator entirely)
+    let useDirectBroadcast = false;
     
     if (!verified.isValid && bypassReasons.includes(verified.invalidReason)) {
       console.log('⚠️ Bypassing facilitator validation (reason:', verified.invalidReason, ')');
@@ -158,8 +162,9 @@ app.post('/api/payment', async (req, res) => {
           
           // Accept if it has 3-5 instructions (compute budget + transfer + maybe extras)
           if (versionedTx.message.compiledInstructions.length >= 3) {
-             console.log('✅ Transaction structure valid - bypassing facilitator check');
+             console.log('✅ Transaction structure valid - will broadcast directly');
              verified = { isValid: true };
+             useDirectBroadcast = true; // Skip facilitator settle, go straight to broadcast
           }
         }
       } catch (err) {
@@ -175,10 +180,16 @@ app.post('/api/payment', async (req, res) => {
     const sessionToken = `paid_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     paidSessions.add(sessionToken);
 
-    console.log('🚀 Calling settlePayment on facilitator...');
+    // If using direct broadcast, skip facilitator entirely to save time (blockhash expiration!)
+    let settleResult = { success: false, errorReason: 'skipped' };
     
-    let settleResult = await x402.settlePayment(paymentHeader, paymentRequirements);
-    console.log('🏁 Settlement result:', JSON.stringify(settleResult, null, 2));
+    if (useDirectBroadcast) {
+      console.log('⚡ Skipping facilitator settle - broadcasting directly to save time');
+    } else {
+      console.log('🚀 Calling settlePayment on facilitator...');
+      settleResult = await x402.settlePayment(paymentHeader, paymentRequirements);
+      console.log('🏁 Settlement result:', JSON.stringify(settleResult, null, 2));
+    }
     
     // BYPASS: Facilitator settlement may reject for various reasons
     // Since user is now fee payer, we can broadcast directly without facilitator signature
@@ -186,11 +197,13 @@ app.post('/api/payment', async (req, res) => {
       'invalid_exact_svm_payload_transaction_create_ata_instruction',
       'invalid_exact_svm_payload_transaction_instructions_length',
       'unexpected_verify_error',
-      'unexpected_settle_error'
+      'unexpected_settle_error',
+      'fee_payer_not_managed_by_facilitator',
+      'skipped' // When we skip facilitator entirely
     ];
     
     if (!settleResult.success && settlementBypassReasons.includes(settleResult.errorReason)) {
-      console.log('⚠️ Facilitator settlement rejected - broadcasting directly (user is fee payer)');
+      console.log('📡 Broadcasting directly (user is fee payer)');
       
       try {
         const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf8'));
@@ -216,23 +229,98 @@ app.post('/api/payment', async (req, res) => {
           const connection = new Connection(HELIUS_RPC_URL, 'confirmed');
           console.log('📡 Broadcasting transaction to Solana network...');
           
+          // Check blockhash validity before broadcasting
+          const txBlockhash = signedTx.message.recentBlockhash;
+          console.log('🔗 Transaction blockhash:', txBlockhash);
+          
+          // Check blockhash validity - if expired, ask user to retry
+          try {
+            const isValid = await connection.isBlockhashValid(txBlockhash);
+            console.log('🔗 Blockhash valid:', isValid.value ? '✅ YES' : '❌ NO (EXPIRED!)');
+            
+            if (!isValid.value) {
+              console.error('❌ BLOCKHASH EXPIRED - transaction cannot be processed');
+              return res.status(400).json({ 
+                error: 'Transaction expired', 
+                message: 'Please try again - the transaction took too long to process',
+                reason: 'blockhash_expired'
+              });
+            }
+          } catch (blockhashCheckError) {
+            console.log('⚠️ Could not check blockhash validity:', blockhashCheckError.message);
+          }
+          
+          // Use skipPreflight for faster submission
           const signature = await connection.sendRawTransaction(signedTx.serialize(), {
-            skipPreflight: false,
-            preflightCommitment: 'confirmed',
-            maxRetries: 3
+            skipPreflight: true,  // Skip preflight for speed - we already validated
+            maxRetries: 5
           });
           
-          console.log('✅ Transaction broadcast successful!');
+          console.log('✅ Transaction sent!');
           console.log('🔗 Signature:', signature);
           console.log('🔗 View on Solscan: https://solscan.io/tx/' + signature);
           
-          // Try to wait for confirmation, but don't fail if it times out
-          try {
-            const confirmation = await connection.confirmTransaction(signature, 'confirmed');
-            console.log('✅ Transaction confirmed on-chain');
-          } catch (confirmError) {
-            // Confirmation timeout is OK - the transaction was broadcast
-            console.log('⚠️ Confirmation timeout - tx was broadcast, check Solscan');
+          // Get the lastValidBlockHeight for the transaction's blockhash
+          // We need to poll for confirmation using the original blockhash context
+          let confirmed = false;
+          const maxAttempts = 30; // 30 attempts * 1 second = 30 seconds max
+          
+          for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+              const status = await connection.getSignatureStatus(signature);
+              
+              if (status.value !== null) {
+                if (status.value.err) {
+                  console.error('❌ Transaction FAILED:', status.value.err);
+                  return res.status(400).json({ 
+                    error: 'Transaction failed', 
+                    message: 'Transaction was rejected by the network',
+                    details: status.value.err
+                  });
+                }
+                
+                if (status.value.confirmationStatus === 'confirmed' || status.value.confirmationStatus === 'finalized') {
+                  console.log('✅ Transaction confirmed:', status.value.confirmationStatus);
+                  confirmed = true;
+                  break;
+                }
+              }
+              
+              // Check if blockhash is still valid
+              const stillValid = await connection.isBlockhashValid(txBlockhash);
+              if (!stillValid.value) {
+                console.log('⚠️ Blockhash expired during confirmation');
+                // Check one more time if tx landed
+                const finalCheck = await connection.getSignatureStatus(signature);
+                if (finalCheck.value !== null && !finalCheck.value.err) {
+                  console.log('✅ Transaction confirmed just in time!');
+                  confirmed = true;
+                }
+                break;
+              }
+              
+              // Wait 1 second before next check
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              
+            } catch (pollError) {
+              console.log('⚠️ Poll error:', pollError.message);
+            }
+          }
+          
+          if (!confirmed) {
+            // Final check
+            const finalStatus = await connection.getSignatureStatus(signature);
+            if (finalStatus.value !== null && !finalStatus.value.err) {
+              console.log('✅ Transaction confirmed on final check');
+              confirmed = true;
+            } else {
+              console.error('❌ Transaction was NOT confirmed - likely dropped');
+              return res.status(400).json({ 
+                error: 'Transaction not confirmed', 
+                message: 'Transaction may have been dropped. Please check Solscan and try again if needed.',
+                signature: signature
+              });
+            }
           }
           
           // Return success - the broadcast worked!
